@@ -7,9 +7,9 @@ public enum InAppAction: String, CaseIterable {
 
 protocol InAppModelViewControllerDelegate: AnyObject {
     var useDarkMode: Bool { get }
-    func didDisplay(notification: ParcelvoyNotification)
-    func handle(action: InAppAction, context: [String: Any], notification: ParcelvoyNotification)
-    func onError(error: Error, source: Parcelvoy.ErrorSource)
+    func didDisplay(notification: PostlesNotification)
+    func handle(action: InAppAction, context: [String: Any], notification: PostlesNotification)
+    func onError(error: Error, source: Postles.ErrorSource)
 }
 
 class InAppModalViewController: UIViewController {
@@ -18,12 +18,12 @@ class InAppModalViewController: UIViewController {
 
     private let webView = WKWebView()
     private let contentController = WKUserContentController()
-    private var notification: ParcelvoyNotification!
+    private var notification: PostlesNotification!
 
     private var initialLoadNavigation: WKNavigation?
 
     init?(
-        notification: ParcelvoyNotification,
+        notification: PostlesNotification,
         delegate: InAppModelViewControllerDelegate,
     ) {
         guard let content = notification.content as? HtmlNotification else { return nil }
@@ -105,11 +105,13 @@ extension InAppModalViewController: WKNavigationDelegate, WKScriptMessageHandler
             return decisionHandler(.allow)
         }
 
-        // If matches `parcelvoy` deeplink path
-        if url.absoluteString.starts(with: "parcelvoy://") {
+        
+
+        // If matches `postles` deeplink path
+        if url.absoluteString.starts(with: "postles://") {
             decisionHandler(.cancel)
 
-            if url.absoluteString == "parcelvoy://dismiss" {
+            if url.absoluteString == "postles://dismiss" {
                 return processAction(action: .dismiss)
             }
 

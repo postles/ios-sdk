@@ -1,7 +1,7 @@
 import Foundation
 import UIKit
 
-public class Parcelvoy {
+public class Postles {
 
     enum StoreKey: String {
         case externalId
@@ -15,7 +15,7 @@ public class Parcelvoy {
         case popupWebView
     }
 
-    public static let shared = Parcelvoy()
+    public static let shared = Postles()
 
     public var externalId: String? {
         didSet {
@@ -45,7 +45,7 @@ public class Parcelvoy {
     }
 
     private var network: NetworkManager?
-    private var store = UserDefaults(suiteName: "Parcelvoy")
+    private var store = UserDefaults(suiteName: "Postles")
 
     private var inAppDelegate: InAppDelegate? {
         get { config?.inAppDelegate }
@@ -69,7 +69,7 @@ public class Parcelvoy {
     ///
     /// - Parameters:
     ///     - apiKey: A generated public API key
-    ///     - urlEndpoint: The based domain of the hosted Parcelvoy instance
+    ///     - urlEndpoint: The based domain of the hosted Postles instance
     ///
     @discardableResult
     public static func initialize(
@@ -77,7 +77,7 @@ public class Parcelvoy {
         urlEndpoint: String,
         inAppDelegate: InAppDelegate? = nil,
         launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
-    ) -> Parcelvoy {
+    ) -> Postles {
         return Self.shared.initialize(apiKey: apiKey, urlEndpoint: urlEndpoint, inAppDelegate: inAppDelegate, launchOptions: launchOptions)
     }
 
@@ -87,7 +87,7 @@ public class Parcelvoy {
         urlEndpoint: String,
         inAppDelegate: InAppDelegate? = nil,
         launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
-    ) -> Parcelvoy {
+    ) -> Postles {
         return self.initialize(config: Config(
             apiKey: apiKey,
             urlEndpoint: urlEndpoint,
@@ -99,7 +99,7 @@ public class Parcelvoy {
     public func initialize(
         config: Config,
         launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
-    ) -> Parcelvoy {
+    ) -> Postles {
         self.config = config
         self.boot()
         return self
@@ -144,7 +144,7 @@ public class Parcelvoy {
     /// Call identify whenever user traits (attributes) change to make sure they are updated.
     ///
     /// - Parameters:
-    ///     - identity: An object representing a Parcelvoy user identity
+    ///     - identity: An object representing a Postles user identity
     ///
     public func identify(identity: Identity) {
         self.checkInit()
@@ -176,7 +176,7 @@ public class Parcelvoy {
 
     /// Track an event
     ///
-    /// Send events for both anonymous and identified users to Parcelvoy to
+    /// Send events for both anonymous and identified users to Postles to
     /// trigger journeys or lists.
     ///
     /// - Parameters:
@@ -215,7 +215,7 @@ public class Parcelvoy {
     }
 
     public typealias Cursor = String
-    public func getNofications() async throws -> Page<ParcelvoyNotification> {
+    public func getNofications() async throws -> Page<PostlesNotification> {
         let user = Alias(anonymousId: self.anonymousId, externalId: self.externalId)
         guard let network = self.network else { throw NetworkError() }
         return try await network.get(path: "notifications", user: user)
@@ -242,7 +242,7 @@ public class Parcelvoy {
     }
 
     @MainActor
-    public func show(notification: ParcelvoyNotification) async {
+    public func show(notification: PostlesNotification) async {
         let viewController = UIApplication
             .shared
             .connectedScenes
@@ -263,7 +263,7 @@ public class Parcelvoy {
         }
     }
 
-    public func consume(notification: ParcelvoyNotification) async {
+    public func consume(notification: PostlesNotification) async {
         do {
             try await self.network?.put(path: "notifications/\(notification.id)", object: Alias(anonymousId: anonymousId, externalId: externalId))
         } catch let error {
@@ -271,7 +271,7 @@ public class Parcelvoy {
         }
     }
 
-    public func dismiss(notification: ParcelvoyNotification) async {
+    public func dismiss(notification: PostlesNotification) async {
         await MainActor.run {
             inAppController?.dismiss(animated: false)
             inAppController = nil
@@ -282,10 +282,10 @@ public class Parcelvoy {
 
     /// Handle deeplink navigation
     ///
-    /// To allow for click tracking, all emails are click-wrapped in a Parcelvoy url
+    /// To allow for click tracking, all emails are click-wrapped in a Postles url
     /// that then needs to be unwrapped for navigation purposes. This method
-    /// checks to see if a given URL is a Parcelvoy URL and if so, unwraps the url,
-    /// triggers the unwrapped URL and calls the Parcelvoy API to register that the
+    /// checks to see if a given URL is a Postles URL and if so, unwraps the url,
+    /// triggers the unwrapped URL and calls the Postles API to register that the
     /// URL was executed.
     ///
     /// - Parameters:
@@ -293,7 +293,7 @@ public class Parcelvoy {
     ///
     @discardableResult
     public func handle(universalLink: URL) -> Bool {
-        guard isParcelvoyDeepLink(url: universalLink.absoluteString),
+        guard isPostlesDeepLink(url: universalLink.absoluteString),
             let queryParams = universalLink.queryParameters,
               let redirect = queryParams["r"]?.removingPercentEncoding,
               let redirectUrl = URL(string: redirect) else {
@@ -323,7 +323,7 @@ public class Parcelvoy {
     @discardableResult
     public func handle(userInfo: [AnyHashable: Any]) -> Bool {
 
-        if userInfo["parcelvoy"] == nil {
+        if userInfo["postles"] == nil {
             return false
         }
 
@@ -348,7 +348,7 @@ public class Parcelvoy {
         return false
     }
 
-    public func isParcelvoyDeepLink(url: String) -> Bool {
+    public func isPostlesDeepLink(url: String) -> Bool {
         guard let endpoint = self.config?.urlEndpoint else {
             return false
         }
@@ -384,7 +384,7 @@ public class Parcelvoy {
     }
 
     private func checkInit() {
-        assert(self.config != nil, "You must initialize the Parcelvoy library before calling any methods")
+        assert(self.config != nil, "You must initialize the Postles library before calling any methods")
     }
 
     private func postEvent(_ event: Event, retries: Int = 3) {
@@ -397,14 +397,14 @@ public class Parcelvoy {
     }
 }
 
-extension Parcelvoy: InAppModelViewControllerDelegate {
+extension Postles: InAppModelViewControllerDelegate {
     var useDarkMode: Bool { inAppDelegate?.useDarkMode ?? false }
 
-    func didDisplay(notification: ParcelvoyNotification) {
+    func didDisplay(notification: PostlesNotification) {
         inAppDelegate?.didDisplay(notification: notification)
     }
 
-    func handle(action: InAppAction, context: [String : Any], notification: ParcelvoyNotification) {
+    func handle(action: InAppAction, context: [String : Any], notification: PostlesNotification) {
         Task { @MainActor in
             if action == .dismiss {
                 await self.dismiss(notification: notification)
@@ -413,7 +413,7 @@ extension Parcelvoy: InAppModelViewControllerDelegate {
         }
     }
 
-    func onError(error: any Error, source: Parcelvoy.ErrorSource) {
+    func onError(error: any Error, source: Postles.ErrorSource) {
         inAppDelegate?.onError(error: error, source: source)
     }
 }

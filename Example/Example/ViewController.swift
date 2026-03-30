@@ -1,18 +1,18 @@
 import UIKit
-import Parcelvoy
+import Postles
 
 class ViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        let id = UUID().uuidString
-        Parcelvoy.shared.identify(id: id, traits: [
-            "first_name": "John",
+        let id = "1"
+        Postles.shared.identify(id: id, traits: [
+            "first_name": "Chris",
             "last_name": "Doe"
         ])
 
-        Parcelvoy.shared.track(event: "Application Opened", properties: [ "property": true ])
+        Postles.shared.track(event: "Application Opened", properties: [ "property": true ])
     }
 
     @IBAction func registerPushNotifications() {
@@ -27,7 +27,7 @@ class ViewController: UIViewController {
 
     @IBAction func getNotifications() {
         Task { @MainActor in
-            await Parcelvoy.shared.showLatestNotification()
+            await Postles.shared.showLatestNotification()
         }
     }
 }

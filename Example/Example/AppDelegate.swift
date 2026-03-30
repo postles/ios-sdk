@@ -1,8 +1,8 @@
 import UIKit
-import Parcelvoy
+import Postles
 
 class CustomInAppDelegate: InAppDelegate {
-    func handle(action: InAppAction, context: [String : AnyObject], notification: ParcelvoyNotification) {
+    func handle(action: InAppAction, context: [String : Any], notification: PostlesNotification) {
         print("PV | Action: \(action) \(context)")
     }
 }
@@ -12,10 +12,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
 
         // TODO: Enter API Key and URL
-        let apiKey = ""
-        let urlEndpoint = ""
+        let apiKey = "pk_3f45d77c-4581-11ed-8b0b-0242ac110003"
+        let urlEndpoint = "https://7101c80c7a35.ngrok.app"
 
-        Parcelvoy.initialize(
+        Postles.initialize(
             apiKey: apiKey,
             urlEndpoint: urlEndpoint,
             inAppDelegate: CustomInAppDelegate(),
@@ -42,11 +42,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         print("PV | Got Token", deviceToken)
-        Parcelvoy.shared.register(token: deviceToken)
+        Postles.shared.register(token: deviceToken)
     }
 
     func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable : Any]) async -> UIBackgroundFetchResult {
-        Parcelvoy.shared.handle(userInfo: userInfo)
+        Postles.shared.handle(userInfo: userInfo)
         return .newData
     }
 
@@ -56,7 +56,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             return false
         }
 
-        return Parcelvoy.shared.handle(universalLink: url)
+        return Postles.shared.handle(universalLink: url)
     }
 }
 

@@ -169,7 +169,7 @@ public struct HtmlNotification: NotificationContent, Decodable {
     }
 }
 
-public struct ParcelvoyNotification: Decodable {
+public struct PostlesNotification: Decodable {
     public let id: Int
     public let contentType: NotificationType
     public let content: NotificationContent
