@@ -293,21 +293,35 @@ public class Postles {
     ///
     @discardableResult
     public func handle(universalLink: URL) -> Bool {
-        guard isPostlesDeepLink(url: universalLink.absoluteString),
-            let queryParams = universalLink.queryParameters,
+        let unwrapped = unwrapAndTrack(url: universalLink)
+        guard unwrapped != universalLink else { return false }
+
+        /// Manually redirect to the URL included in the parameter
+        open(url: unwrapped)
+        return true
+    }
+
+    /// If `url` is a Postles click-wrapped tracking URL, fire the tracking
+    /// ping (so the backend records the click) and return the unwrapped
+    /// destination URL. Otherwise return `url` unchanged.
+    ///
+    /// - Parameters:
+    ///     - url: The URL that may or may not be Postles click-wrapped
+    ///
+    func unwrapAndTrack(url: URL) -> URL {
+        guard isPostlesDeepLink(url: url.absoluteString),
+              let queryParams = url.queryParameters,
               let redirect = queryParams["r"]?.removingPercentEncoding,
               let redirectUrl = URL(string: redirect) else {
-            return false
+            return url
         }
 
         /// Run the URL so that the redirect events get triggered at API
-        var request = URLRequest(url: universalLink)
+        var request = URLRequest(url: url)
         request.httpMethod = "GET"
         self.network?.process(request: request)
 
-        /// Manually redirect to the URL included in the parameter
-        open(url: redirectUrl)
-        return true
+        return redirectUrl
     }
 
     /// Handle push notification receipt

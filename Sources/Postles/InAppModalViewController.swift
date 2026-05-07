@@ -9,6 +9,7 @@ protocol InAppModelViewControllerDelegate: AnyObject {
     var useDarkMode: Bool { get }
     func didDisplay(notification: PostlesNotification)
     func handle(action: InAppAction, context: [String: Any], notification: PostlesNotification)
+    func unwrapAndTrack(url: URL) -> URL
     func onError(error: Error, source: Postles.ErrorSource)
 }
 
@@ -120,11 +121,16 @@ extension InAppModalViewController: WKNavigationDelegate, WKScriptMessageHandler
             ])
         }
 
-        // Disable all other page actions, pop open in a new browser
+        // Any non-postles, non-about:blank URL: treat as an external link
+        // click. Run it through the delegate's unwrapAndTrack so the backend
+        // click ping fires for wrapped URLs, then hand the destination URL
+        // to the host app via the .custom action so the host decides what
+        // to do (open externally, dismiss the modal, etc).
         decisionHandler(.cancel)
-        if UIApplication.shared.canOpenURL(url) {
-            UIApplication.shared.open(url)
-        }
+        let destination = delegate?.unwrapAndTrack(url: url) ?? url
+        processAction(action: .custom, body: [
+            "url": destination.absoluteString
+        ])
     }
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {

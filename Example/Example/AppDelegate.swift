@@ -4,6 +4,18 @@ import Postles
 class CustomInAppDelegate: InAppDelegate {
     func handle(action: InAppAction, context: [String : Any], notification: PostlesNotification) {
         print("PV | Action: \(action) \(context)")
+
+        // The SDK delivers HTTP/HTTPS link clicks (and postles:// custom links)
+        // here as .custom actions with the destination URL in context["url"].
+        // For wrapped tracking URLs the backend has already recorded the click;
+        // the URL passed here is the unwrapped destination. The host app is
+        // responsible for opening it.
+        if action == .custom,
+           let urlString = context["url"] as? String,
+           let url = URL(string: urlString),
+           UIApplication.shared.canOpenURL(url) {
+            UIApplication.shared.open(url)
+        }
     }
 }
 
