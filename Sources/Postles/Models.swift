@@ -99,6 +99,24 @@ public struct Page<T: Decodable>: Decodable {
     let nextCursor: String?
 }
 
+public enum SubscriptionState: String, Codable {
+    case subscribed
+    case unsubscribed
+}
+
+public struct SubscriptionPreference: Decodable {
+    public let subscriptionId: Int
+    public let name: String
+    public let channel: String
+    public let state: SubscriptionState
+}
+
+struct SubscriptionUpdate: Encodable {
+    let anonymousId: String
+    let externalId: String?
+    let state: SubscriptionState
+}
+
 public enum NotificationType: String, Decodable {
     case banner
     case alert
