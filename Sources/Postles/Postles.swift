@@ -224,13 +224,21 @@ public class Postles {
     /// Fetch the current user's subscription preferences
     ///
     /// Returns the public subscriptions for the project along with the current
-    /// user's state for each one. Use the returned cursor to page through
-    /// results if needed.
+    /// user's state for each one. Pass the `nextCursor` from a previous page to
+    /// fetch the next page of results.
     ///
-    public func getSubscriptions() async throws -> Page<SubscriptionPreference> {
-        let user = Alias(anonymousId: self.anonymousId, externalId: self.externalId)
+    /// - Parameters:
+    ///     - cursor: An optional pagination cursor returned by a previous call
+    ///
+    public func getSubscriptions(cursor: String? = nil) async throws -> Page<SubscriptionPreference> {
+        self.checkInit()
         guard let network = self.network else { throw NetworkError() }
-        return try await network.get(path: "subscriptions", user: user)
+        let user = Alias(anonymousId: self.anonymousId, externalId: self.externalId)
+        var path = "subscriptions"
+        if let cursor, let encoded = cursor.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) {
+            path += "?cursor=\(encoded)"
+        }
+        return try await network.get(path: path, user: user)
     }
 
     /// Update a single subscription preference for the current user

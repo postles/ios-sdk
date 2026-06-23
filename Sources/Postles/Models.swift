@@ -96,7 +96,7 @@ struct Device: Codable {
 
 public struct Page<T: Decodable>: Decodable {
     public let results: [T]
-    let nextCursor: String?
+    public let nextCursor: String?
 }
 
 public enum SubscriptionState: String, Codable {

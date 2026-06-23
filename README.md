@@ -106,7 +106,7 @@ public protocol InAppDelegate: AnyObject {
 If you would like to manually handle showing notifications, this can be achieved by turning `autoShow` to false and then calling `Postles.shared.showLatestNotification()`
 
 ### Preference Center
-Let users manage which subscriptions they belong to without building any UI of your own. `getSubscriptions()` returns the project's public subscriptions along with the current user's state for each, and `setSubscription(id:state:)` (or the `subscribe`/`unsubscribe` helpers) flips a single subscription. The user must be identified first (via `identify`).
+Read and modify a user's subscription preferences directly through SDK methods — no UI is included, so you can build your own preference center (or manage preferences programmatically). `getSubscriptions()` returns the project's public subscriptions along with the current user's state for each, and `setSubscription(id:state:)` (or the `subscribe`/`unsubscribe` helpers) flips a single subscription. The user must be identified first (via `identify`).
 
 ```swift
 // Read the current preferences
