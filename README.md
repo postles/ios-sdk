@@ -105,6 +105,30 @@ public protocol InAppDelegate: AnyObject {
 
 If you would like to manually handle showing notifications, this can be achieved by turning `autoShow` to false and then calling `Postles.shared.showLatestNotification()`
 
+### Preference Center
+Read and modify a user's subscription preferences directly through SDK methods — no UI is included, so you can build your own preference center (or manage preferences programmatically). `getSubscriptions()` returns the project's public subscriptions along with the current user's state for each, and `setSubscription(id:state:)` (or the `subscribe`/`unsubscribe` helpers) flips a single subscription. The user must be identified first (via `identify`).
+
+```swift
+// Read the current preferences
+let page = try await Postles.shared.getSubscriptions()
+for preference in page.results {
+    print(preference.name, preference.channel, preference.state)
+}
+
+// Update a preference
+try await Postles.shared.unsubscribe(id: 123)
+try await Postles.shared.subscribe(id: 123)
+
+// Or set an explicit state
+try await Postles.shared.setSubscription(id: 123, state: .unsubscribed)
+```
+
+#### Subscription Methods
+- `getSubscriptions() async throws -> Page<SubscriptionPreference>`: Returns a page of the user's subscription preferences
+- `setSubscription(id: Int, state: SubscriptionState) async throws`: Set a subscription to `.subscribed` or `.unsubscribed`
+- `subscribe(id: Int) async throws`: Subscribe the user to a subscription
+- `unsubscribe(id: Int) async throws`: Unsubscribe the user from a subscription
+
 #### Helper Methods
 - `getNofications() async throws -> Page<PostlesNotification>`: Returns a page of notifications
 - `showLatestNotification() async`: Display the latest notification to the user

@@ -221,6 +221,63 @@ public class Postles {
         return try await network.get(path: "notifications", user: user)
     }
 
+    /// Fetch the current user's subscription preferences
+    ///
+    /// Returns the public subscriptions for the project along with the current
+    /// user's state for each one. Pass the `nextCursor` from a previous page to
+    /// fetch the next page of results.
+    ///
+    /// - Parameters:
+    ///     - cursor: An optional pagination cursor returned by a previous call
+    ///
+    public func getSubscriptions(cursor: String? = nil) async throws -> Page<SubscriptionPreference> {
+        self.checkInit()
+        guard let network = self.network else { throw NetworkError() }
+        let user = Alias(anonymousId: self.anonymousId, externalId: self.externalId)
+        var path = "subscriptions"
+        if let cursor, let encoded = cursor.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) {
+            path += "?cursor=\(encoded)"
+        }
+        return try await network.get(path: path, user: user)
+    }
+
+    /// Update a single subscription preference for the current user
+    ///
+    /// Flips one public subscription between subscribed and unsubscribed.
+    ///
+    /// - Parameters:
+    ///     - id: The identifier of the subscription to update
+    ///     - state: The desired subscription state
+    ///
+    public func setSubscription(id: Int, state: SubscriptionState) async throws {
+        self.checkInit()
+        guard let network = self.network else { throw NetworkError() }
+        let update = SubscriptionUpdate(
+            anonymousId: self.anonymousId,
+            externalId: self.externalId,
+            state: state
+        )
+        try await network.put(path: "subscriptions/\(id)", object: update)
+    }
+
+    /// Subscribe the current user to a single subscription
+    ///
+    /// - Parameters:
+    ///     - id: The identifier of the subscription to subscribe to
+    ///
+    public func subscribe(id: Int) async throws {
+        try await self.setSubscription(id: id, state: .subscribed)
+    }
+
+    /// Unsubscribe the current user from a single subscription
+    ///
+    /// - Parameters:
+    ///     - id: The identifier of the subscription to unsubscribe from
+    ///
+    public func unsubscribe(id: Int) async throws {
+        try await self.setSubscription(id: id, state: .unsubscribed)
+    }
+
     public func showLatestNotification() async {
         do {
             let notifications = try await self.getNofications()
