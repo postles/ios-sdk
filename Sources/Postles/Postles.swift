@@ -317,7 +317,7 @@ public class Postles {
     }
 
     public func showLatestNotification() async {
-        self.lastInAppFetch = Date()
+        await MainActor.run { self.lastInAppFetch = Date() }
         do {
             let notifications = try await self.getNofications()
 
@@ -446,7 +446,7 @@ public class Postles {
             return true
         }
 
-        if config?.fetchInAppOnForeground == true {
+        if config?.fetchInAppOnForeground == true, inAppDelegate?.autoShow == true {
             Task { @MainActor in
                 await self.showLatestNotificationIfNeeded()
             }
