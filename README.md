@@ -55,7 +55,7 @@ Postles.shared.register(token: "APN_TOKEN_DATA")
 ```
 
 #### Handle Notifications
-When a notification is received it can contain a deeplink that will trigger when a user opens it. To properly handle the routing you need to pass the received push notification to the Postles handler.
+When a notification is received it can contain a deeplink that will trigger when a user opens it. To properly handle the routing you need to pass the received push notification to the Postles handler. Passing every Postles notification through this handler also lets the SDK check for waiting in-app messages, so do it for visible notifications too, not just silent ones.
 ```swift
 func application(
     _ application: UIApplication,
@@ -84,6 +84,21 @@ Postles.initialize(
 )
 ```
 
+#### Automatic Fetching
+Your app does not need to fetch in-app messages itself. While `autoShow` is on, the SDK checks for waiting messages when the app is initialized, every time the app comes to the foreground, and whenever any Postles push notification is received. Checks are limited to one every 30 seconds, so a burst of activations or notifications only results in a single request.
+
+To turn the automatic foreground and push checks off and fetch on your own schedule, pass `fetchInAppOnForeground: false` when you initialize:
+```swift
+Postles.initialize(
+    apiKey: apiKey,
+    urlEndpoint: urlEndpoint,
+    inAppDelegate: CustomInAppDelegate(),
+    fetchInAppOnForeground: false,
+    launchOptions: launchOptions
+)
+```
+Silent notifications sent by Postles always trigger a check, since that is the only thing they are for.
+
 This delegate contains three methods that you can configure to help you determine how and when notifications should display.
 ```swift
 public protocol InAppDelegate: AnyObject {
@@ -103,7 +118,7 @@ public protocol InAppDelegate: AnyObject {
     - `custom`: Triggered with custom data for the app to utilize
 - `onError(error: Error)`: Provide errors if any have been encountered
 
-If you would like to manually handle showing notifications, this can be achieved by turning `autoShow` to false and then calling `Postles.shared.showLatestNotification()`
+If you would like to manually handle showing notifications, this can be achieved by turning `autoShow` to false and then calling `Postles.shared.showLatestNotification()`, which fetches immediately and ignores the 30 second limit.
 
 ### Preference Center
 Read and modify a user's subscription preferences directly through SDK methods — no UI is included, so you can build your own preference center (or manage preferences programmatically). `getSubscriptions()` returns the project's public subscriptions along with the current user's state for each, and `setSubscription(id:state:)` (or the `subscribe`/`unsubscribe` helpers) flips a single subscription. The user must be identified first (via `identify`).

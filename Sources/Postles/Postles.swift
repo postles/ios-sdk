@@ -44,8 +44,12 @@ public class Postles {
         }
     }
 
+    private static let inAppFetchThrottle: TimeInterval = 30
+
     private var network: NetworkManager?
     private var store = UserDefaults(suiteName: "Postles")
+    private var lastInAppFetch: Date?
+    private var foregroundObservers: [NSObjectProtocol] = []
 
     private var inAppDelegate: InAppDelegate? {
         get { config?.inAppDelegate }
@@ -76,9 +80,16 @@ public class Postles {
         apiKey: String,
         urlEndpoint: String,
         inAppDelegate: InAppDelegate? = nil,
+        fetchInAppOnForeground: Bool = true,
         launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Postles {
-        return Self.shared.initialize(apiKey: apiKey, urlEndpoint: urlEndpoint, inAppDelegate: inAppDelegate, launchOptions: launchOptions)
+        return Self.shared.initialize(
+            apiKey: apiKey,
+            urlEndpoint: urlEndpoint,
+            inAppDelegate: inAppDelegate,
+            fetchInAppOnForeground: fetchInAppOnForeground,
+            launchOptions: launchOptions
+        )
     }
 
     @discardableResult
@@ -86,12 +97,14 @@ public class Postles {
         apiKey: String,
         urlEndpoint: String,
         inAppDelegate: InAppDelegate? = nil,
+        fetchInAppOnForeground: Bool = true,
         launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Postles {
         return self.initialize(config: Config(
             apiKey: apiKey,
             urlEndpoint: urlEndpoint,
-            inAppDelegate: inAppDelegate
+            inAppDelegate: inAppDelegate,
+            fetchInAppOnForeground: fetchInAppOnForeground
         ), launchOptions: launchOptions)
     }
 
@@ -106,11 +119,36 @@ public class Postles {
     }
 
     private func boot() {
+        self.observeForeground()
         if inAppDelegate?.autoShow == true {
             Task { @MainActor in
-                await self.showLatestNotification()
+                await self.showLatestNotificationIfNeeded()
             }
         }
+    }
+
+    private func observeForeground() {
+        self.foregroundObservers.forEach { NotificationCenter.default.removeObserver($0) }
+        self.foregroundObservers = []
+
+        guard config?.fetchInAppOnForeground == true, inAppDelegate?.autoShow == true else { return }
+
+        var names: [Notification.Name] = [UIApplication.didBecomeActiveNotification]
+        if #available(iOS 13.0, *) {
+            names.append(UIScene.didActivateNotification)
+        }
+
+        self.foregroundObservers = names.map { name in
+            NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                Task { @MainActor in
+                    await self?.showLatestNotificationIfNeeded()
+                }
+            }
+        }
+    }
+
+    deinit {
+        self.foregroundObservers.forEach { NotificationCenter.default.removeObserver($0) }
     }
 
     /// Identify a given user
@@ -279,6 +317,7 @@ public class Postles {
     }
 
     public func showLatestNotification() async {
+        await MainActor.run { self.lastInAppFetch = Date() }
         do {
             let notifications = try await self.getNofications()
 
@@ -296,6 +335,20 @@ public class Postles {
         } catch {
             self.inAppDelegate?.onError(error: error, source: .getNotifications)
         }
+    }
+
+    /// Fetch and display in-app messages unless one was already fetched recently
+    ///
+    /// Used by the automatic foreground and push receipt triggers so that a burst of
+    /// activations or notifications results in at most one request every 30 seconds.
+    ///
+    @MainActor
+    func showLatestNotificationIfNeeded() async {
+        if let lastInAppFetch, Date().timeIntervalSince(lastInAppFetch) < Self.inAppFetchThrottle {
+            return
+        }
+        self.lastInAppFetch = Date()
+        await self.showLatestNotification()
     }
 
     @MainActor
@@ -384,13 +437,19 @@ public class Postles {
             return false
         }
 
-        /// Handle silent notifications that should only trigger in-app messages
+        /// Silent notifications exist only to trigger the in-app check, so they always fetch
         if let silentNotification = userInfo["aps"] as? [String: AnyObject],
            silentNotification["content-available"] as? Int == 1 {
             Task { @MainActor in
                 await self.showLatestNotification()
             }
             return true
+        }
+
+        if config?.fetchInAppOnForeground == true, inAppDelegate?.autoShow == true {
+            Task { @MainActor in
+                await self.showLatestNotificationIfNeeded()
+            }
         }
 
         /// Handle opening the app from tapping on a notification
