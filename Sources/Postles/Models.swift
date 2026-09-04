@@ -5,6 +5,19 @@ public struct Config {
     let apiKey: String
     let urlEndpoint: String
     let inAppDelegate: InAppDelegate?
+    let fetchInAppOnForeground: Bool
+
+    public init(
+        apiKey: String,
+        urlEndpoint: String,
+        inAppDelegate: InAppDelegate? = nil,
+        fetchInAppOnForeground: Bool = true
+    ) {
+        self.apiKey = apiKey
+        self.urlEndpoint = urlEndpoint
+        self.inAppDelegate = inAppDelegate
+        self.fetchInAppOnForeground = fetchInAppOnForeground
+    }
 }
 
 public class NetworkError: Error { }
