@@ -55,7 +55,7 @@ Postles.shared.register(token: "APN_TOKEN_DATA")
 ```
 
 #### Handle Notifications
-When a notification is received it can contain a deeplink that will trigger when a user opens it. To properly handle the routing you need to pass the received push notification to the Postles handler.
+When a notification is received it can contain a deeplink that will trigger when a user opens it. To properly handle the routing you need to pass the received push notification to the Postles handler. Notifications sent through the send API also carry a signed open URL, so the same handler records a `message.opened` event for them.
 ```swift
 func application(
     _ application: UIApplication,

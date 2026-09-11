@@ -17,6 +17,8 @@ public class Postles {
 
     public static let shared = Postles()
 
+    static let openUrlKey = "postles_open_url"
+
     public var externalId: String? {
         didSet {
             if externalId != nil {
@@ -391,6 +393,13 @@ public class Postles {
                 await self.showLatestNotification()
             }
             return true
+        }
+
+        if let openUrlString = userInfo[Self.openUrlKey] as? String,
+           let openUrl = URL(string: openUrlString) {
+            var request = URLRequest(url: openUrl)
+            request.httpMethod = "GET"
+            self.network?.process(request: request)
         }
 
         /// Handle opening the app from tapping on a notification

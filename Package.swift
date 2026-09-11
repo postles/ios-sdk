@@ -22,5 +22,8 @@ let package = Package(
         .target(
             name: "Postles",
             dependencies: []),
+        .testTarget(
+            name: "PostlesTests",
+            dependencies: ["Postles"]),
     ]
 )
