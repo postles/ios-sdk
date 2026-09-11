@@ -17,6 +17,8 @@ public class Postles {
 
     public static let shared = Postles()
 
+    static let openUrlKey = "postles_open_url"
+
     public var externalId: String? {
         didSet {
             if externalId != nil {
@@ -44,7 +46,7 @@ public class Postles {
         }
     }
 
-    private var network: NetworkManager?
+    var network: NetworkManager?
     private var store = UserDefaults(suiteName: "Postles")
 
     private var inAppDelegate: InAppDelegate? {
@@ -380,7 +382,7 @@ public class Postles {
     @discardableResult
     public func handle(userInfo: [AnyHashable: Any]) -> Bool {
 
-        if userInfo["postles"] == nil {
+        if userInfo["parcelvoy"] == nil {
             return false
         }
 
@@ -403,6 +405,20 @@ public class Postles {
             return true
         }
         return false
+    }
+
+    /// Record a push open from its userInfo payload; call on tap, not on receipt
+    @discardableResult
+    public func pushOpened(userInfo: [AnyHashable: Any]) -> Bool {
+        guard let openUrlString = userInfo[Self.openUrlKey] as? String,
+              let openUrl = URL(string: openUrlString) else {
+            return false
+        }
+
+        var request = URLRequest(url: openUrl)
+        request.httpMethod = "GET"
+        self.network?.process(request: request)
+        return true
     }
 
     public func isPostlesDeepLink(url: String) -> Bool {
