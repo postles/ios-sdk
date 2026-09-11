@@ -46,7 +46,7 @@ public class Postles {
         }
     }
 
-    private var network: NetworkManager?
+    var network: NetworkManager?
     private var store = UserDefaults(suiteName: "Postles")
 
     private var inAppDelegate: InAppDelegate? {
@@ -382,7 +382,7 @@ public class Postles {
     @discardableResult
     public func handle(userInfo: [AnyHashable: Any]) -> Bool {
 
-        if userInfo["postles"] == nil {
+        if userInfo["parcelvoy"] == nil {
             return false
         }
 
@@ -395,13 +395,6 @@ public class Postles {
             return true
         }
 
-        if let openUrlString = userInfo[Self.openUrlKey] as? String,
-           let openUrl = URL(string: openUrlString) {
-            var request = URLRequest(url: openUrl)
-            request.httpMethod = "GET"
-            self.network?.process(request: request)
-        }
-
         /// Handle opening the app from tapping on a notification
         if let _ = userInfo["method"] as? String,
            let urlString = userInfo["url"] as? String,
@@ -412,6 +405,20 @@ public class Postles {
             return true
         }
         return false
+    }
+
+    /// Record a push open from its userInfo payload; call on tap, not on receipt
+    @discardableResult
+    public func pushOpened(userInfo: [AnyHashable: Any]) -> Bool {
+        guard let openUrlString = userInfo[Self.openUrlKey] as? String,
+              let openUrl = URL(string: openUrlString) else {
+            return false
+        }
+
+        var request = URLRequest(url: openUrl)
+        request.httpMethod = "GET"
+        self.network?.process(request: request)
+        return true
     }
 
     public func isPostlesDeepLink(url: String) -> Bool {
