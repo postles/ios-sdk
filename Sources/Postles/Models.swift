@@ -99,22 +99,115 @@ public struct Page<T: Decodable>: Decodable {
     public let nextCursor: String?
 }
 
+public enum TopicState: String, Codable {
+    case subscribed
+    case unsubscribed
+    case notOptedIn = "not_opted_in"
+}
+
+public enum TopicKind: String, Codable {
+    case channel
+    case topic
+}
+
+public struct Topic: Decodable {
+    public let subscriptionId: Int
+    public let name: String
+    public let channel: String
+    public let kind: TopicKind
+    public let isOptIn: Bool
+    public let state: TopicState
+
+    enum CodingKeys: String, CodingKey {
+        case subscriptionId, name, channel, kind, isOptIn, state
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.subscriptionId = try container.decode(Int.self, forKey: .subscriptionId)
+        self.name = try container.decode(String.self, forKey: .name)
+        self.channel = try container.decode(String.self, forKey: .channel)
+        self.kind = try container.decodeIfPresent(TopicKind.self, forKey: .kind) ?? .topic
+        self.isOptIn = try container.decodeIfPresent(Bool.self, forKey: .isOptIn) ?? false
+        self.state = try container.decode(TopicState.self, forKey: .state)
+    }
+}
+
+public struct TopicChannel: Decodable {
+    public let channel: String
+    public let label: String
+    public let master: Topic?
+    public let topics: [Topic]
+    public let paused: Bool
+    public let canResubscribe: Bool
+    public let resubscribeTextNumber: String?
+}
+
+struct TopicChannelList: Decodable {
+    let channels: [TopicChannel]
+}
+
+public struct TopicUpdate: Encodable {
+    public let subscriptionId: Int
+    public let state: TopicState
+
+    public init(subscriptionId: Int, state: TopicState) {
+        self.subscriptionId = subscriptionId
+        self.state = state == .subscribed ? .subscribed : .unsubscribed
+    }
+}
+
+struct TopicStateUpdate: Encodable {
+    let anonymousId: String
+    let externalId: String?
+    let state: TopicState
+
+    init(anonymousId: String, externalId: String?, state: TopicState) {
+        self.anonymousId = anonymousId
+        self.externalId = externalId
+        self.state = state == .subscribed ? .subscribed : .unsubscribed
+    }
+}
+
+public enum PostlesError: Error, LocalizedError {
+    case resubscribeLocked(message: String)
+
+    public var errorDescription: String? {
+        switch self {
+        case .resubscribeLocked(let message): return message
+        }
+    }
+}
+
+struct ErrorResponse: Decodable {
+    let status: String?
+    let error: String?
+    let code: Int?
+}
+
+@available(*, deprecated, message: "Renamed to TopicState. A topic the user has never chosen is reported here as .unsubscribed rather than .notOptedIn.", renamed: "TopicState")
 public enum SubscriptionState: String, Codable {
     case subscribed
     case unsubscribed
+
+    var topicState: TopicState {
+        self == .subscribed ? .subscribed : .unsubscribed
+    }
 }
 
+@available(*, deprecated, renamed: "Topic")
 public struct SubscriptionPreference: Decodable {
     public let subscriptionId: Int
     public let name: String
     public let channel: String
     public let state: SubscriptionState
-}
 
-struct SubscriptionUpdate: Encodable {
-    let anonymousId: String
-    let externalId: String?
-    let state: SubscriptionState
+    init(topic: Topic) {
+        self.subscriptionId = topic.subscriptionId
+        self.name = topic.name
+        self.channel = topic.channel
+        self.state = topic.state == .subscribed ? .subscribed : .unsubscribed
+    }
 }
 
 public enum NotificationType: String, Decodable {

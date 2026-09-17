@@ -52,6 +52,10 @@ public class Postles {
     }
     private var inAppController: UIViewController?
 
+    private var user: Alias {
+        Alias(anonymousId: self.anonymousId, externalId: self.externalId)
+    }
+
     public init() {
         self.deviceId = UUID().uuidString
         self.externalId = self.store?.string(forKey: StoreKey.externalId.rawValue)
@@ -221,61 +225,117 @@ public class Postles {
         return try await network.get(path: "notifications", user: user)
     }
 
-    /// Fetch the current user's subscription preferences
+    /// Fetch the current user's topic preferences
     ///
-    /// Returns the public subscriptions for the project along with the current
-    /// user's state for each one. Pass the `nextCursor` from a previous page to
+    /// Returns the public topics for the project along with the current user's
+    /// state for each one, including the per-channel master switches
+    /// (`kind == .channel`). Pass the `nextCursor` from a previous page to
     /// fetch the next page of results.
     ///
     /// - Parameters:
     ///     - cursor: An optional pagination cursor returned by a previous call
     ///
-    public func getSubscriptions(cursor: String? = nil) async throws -> Page<SubscriptionPreference> {
+    public func getTopics(cursor: String? = nil) async throws -> Page<Topic> {
         self.checkInit()
         guard let network = self.network else { throw NetworkError() }
-        let user = Alias(anonymousId: self.anonymousId, externalId: self.externalId)
         var path = "subscriptions"
         if let cursor, let encoded = cursor.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) {
             path += "?cursor=\(encoded)"
         }
-        return try await network.get(path: path, user: user)
+        return try await network.get(path: path, user: self.user)
     }
 
-    /// Update a single subscription preference for the current user
+    /// Fetch the current user's topic preferences grouped by channel
     ///
-    /// Flips one public subscription between subscribed and unsubscribed.
+    /// Returns one section per channel, arranged the way a preference center
+    /// renders it: the channel's master switch, the topics nested under it,
+    /// whether those topics are paused because the master is off, and whether
+    /// the master can be turned back on from the app.
     ///
-    /// - Parameters:
-    ///     - id: The identifier of the subscription to update
-    ///     - state: The desired subscription state
-    ///
-    public func setSubscription(id: Int, state: SubscriptionState) async throws {
+    public func getTopicChannels() async throws -> [TopicChannel] {
         self.checkInit()
         guard let network = self.network else { throw NetworkError() }
-        let update = SubscriptionUpdate(
+        let list: TopicChannelList = try await network.get(path: "subscriptions/channels", user: self.user)
+        return list.channels
+    }
+
+    /// Update a single topic for the current user
+    ///
+    /// Flips one public topic between subscribed and unsubscribed. Turning a
+    /// channel master back on where consent has to come from the handset
+    /// throws `PostlesError.resubscribeLocked`.
+    ///
+    /// - Parameters:
+    ///     - id: The identifier of the topic to update
+    ///     - state: The desired state, either `.subscribed` or `.unsubscribed`
+    ///
+    public func setTopic(id: Int, state: TopicState) async throws {
+        self.checkInit()
+        guard let network = self.network else { throw NetworkError() }
+        let update = TopicStateUpdate(
             anonymousId: self.anonymousId,
             externalId: self.externalId,
             state: state
         )
-        try await network.put(path: "subscriptions/\(id)", object: update)
+        try await network.put(path: "subscriptions/\(id)", object: update, user: self.user)
     }
 
-    /// Subscribe the current user to a single subscription
+    /// Update many topics for the current user in a single request
+    ///
+    /// Saves a whole preference screen at once, applied by the API as one
+    /// read-modify-write so rapid toggles cannot clobber each other. At most
+    /// 100 updates per call, and every identifier must be a public topic of
+    /// the project or none of the updates are applied.
     ///
     /// - Parameters:
-    ///     - id: The identifier of the subscription to subscribe to
+    ///     - updates: The topics to change and the state to set each one to
     ///
+    public func setTopics(_ updates: [TopicUpdate]) async throws {
+        self.checkInit()
+        guard let network = self.network else { throw NetworkError() }
+        try await network.put(path: "subscriptions", object: updates, user: self.user)
+    }
+
+    /// Subscribe the current user to a single topic
+    ///
+    /// - Parameters:
+    ///     - id: The identifier of the topic to subscribe to
+    ///
+    public func subscribeTopic(id: Int) async throws {
+        try await self.setTopic(id: id, state: .subscribed)
+    }
+
+    /// Unsubscribe the current user from a single topic
+    ///
+    /// - Parameters:
+    ///     - id: The identifier of the topic to unsubscribe from
+    ///
+    public func unsubscribeTopic(id: Int) async throws {
+        try await self.setTopic(id: id, state: .unsubscribed)
+    }
+
+    @available(*, deprecated, message: "Renamed to getTopics(cursor:). Topics the user has never opted in to are reported as .unsubscribed here.", renamed: "getTopics(cursor:)")
+    public func getSubscriptions(cursor: String? = nil) async throws -> Page<SubscriptionPreference> {
+        let page = try await self.getTopics(cursor: cursor)
+        return Page(
+            results: page.results.map { SubscriptionPreference(topic: $0) },
+            nextCursor: page.nextCursor
+        )
+    }
+
+    @available(*, deprecated, renamed: "setTopic(id:state:)")
+    public func setSubscription(id: Int, state: SubscriptionState) async throws {
+        try await self.setTopic(id: id, state: state.topicState)
+    }
+
+    @available(*, deprecated, renamed: "subscribeTopic(id:)")
     public func subscribe(id: Int) async throws {
-        try await self.setSubscription(id: id, state: .subscribed)
+        try await self.subscribeTopic(id: id)
     }
 
-    /// Unsubscribe the current user from a single subscription
-    ///
-    /// - Parameters:
-    ///     - id: The identifier of the subscription to unsubscribe from
-    ///
+    @available(*, deprecated, renamed: "unsubscribeTopic(id:)")
     public func unsubscribe(id: Int) async throws {
-        try await self.setSubscription(id: id, state: .unsubscribed)
+        try await self.unsubscribeTopic(id: id)
     }
 
     public func showLatestNotification() async {
