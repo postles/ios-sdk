@@ -9,11 +9,7 @@ class NetworkManager {
     }
 
     func get<T: Decodable> (path: String, user: Alias) async throws -> T {
-        let headers = [
-            "x-anonymous-id": user.anonymousId,
-            "x-external-id": user.externalId
-        ]
-        let request = self.request(path: path, method: "GET", headers: headers)
+        let request = self.request(path: path, method: "GET", headers: Self.headers(for: user))
         return try await self.process(request: request)
     }
 
@@ -32,8 +28,9 @@ class NetworkManager {
         return try await self.process(request: request)
     }
 
-    @discardableResult func put(path: String, object: Encodable) async throws -> Data? {
-        let request = self.request(path: path, method: "PUT", object: object)
+    @discardableResult func put(path: String, object: Encodable, user: Alias? = nil) async throws -> Data? {
+        let headers: [String: String?] = user.map { Self.headers(for: $0) } ?? [:]
+        let request = self.request(path: path, method: "PUT", headers: headers, object: object)
         return try await self.process(request: request)
     }
 
@@ -59,26 +56,37 @@ class NetworkManager {
         guard (200...299).contains(httpResponse.statusCode) else {
             print("PV | statusCode should be 2xx, but is \(httpResponse.statusCode)")
             print("PV | response = \(httpResponse)")
-            throw URLError(.badServerResponse)
+            throw Self.error(body: data)
         }
 
         return data
     }
 
     func process<T: Decodable>(request: URLRequest) async throws -> T {
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
-
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .formatted(dateFormatter)
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
-
+        let decoder = JSONDecoder.postles
         let data = try await self.process(request: request)
         if let data {
             return try decoder.decode(T.self, from: data)
         } else {
             throw URLError(.badServerResponse)
         }
+    }
+
+    static func headers(for user: Alias) -> [String: String?] {
+        [
+            "x-anonymous-id": user.anonymousId,
+            "x-external-id": user.externalId
+        ]
+    }
+
+    static let resubscribeLockedCode = 4004
+
+    static func error(body: Data) -> Error {
+        guard let response = try? JSONDecoder().decode(ErrorResponse.self, from: body),
+              response.code == Self.resubscribeLockedCode else {
+            return URLError(.badServerResponse)
+        }
+        return PostlesError.resubscribeLocked(message: response.error ?? "")
     }
 
     func request(

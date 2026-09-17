@@ -106,28 +106,85 @@ public protocol InAppDelegate: AnyObject {
 If you would like to manually handle showing notifications, this can be achieved by turning `autoShow` to false and then calling `Postles.shared.showLatestNotification()`
 
 ### Preference Center
-Read and modify a user's subscription preferences directly through SDK methods — no UI is included, so you can build your own preference center (or manage preferences programmatically). `getSubscriptions()` returns the project's public subscriptions along with the current user's state for each, and `setSubscription(id:state:)` (or the `subscribe`/`unsubscribe` helpers) flips a single subscription. The user must be identified first (via `identify`).
+Read and modify a user's topic preferences directly through SDK methods. No UI is included, so you can build your own preference center (or manage preferences programmatically). The user must be identified first (via `identify`).
+
+`getTopicChannels()` returns one section per channel, already grouped the way a preference center renders it: the channel's master switch, the topics nested under it, whether those topics are paused because the master is off, and whether the master can be turned back on from the app. `setTopics(_:)` then saves the whole screen in a single request.
+
+Render a section as follows. Show the nested topic toggles only when the channel has more than one topic or any opt-in topic, otherwise the channel toggle is the whole story; a channel with no master of its own always shows its topics, since there is no channel toggle to stand in for them. While the channel is `paused`, its topics are disabled and keep their last value. When `canResubscribe` is false, consent has to come from the handset, so show a notice instead of a control.
 
 ```swift
-// Read the current preferences
-let page = try await Postles.shared.getSubscriptions()
-for preference in page.results {
-    print(preference.name, preference.channel, preference.state)
+let channels = try await Postles.shared.getTopicChannels()
+
+for channel in channels {
+    if let master = channel.master {
+        if channel.canResubscribe {
+            addToggle(title: channel.label, isOn: master.state == .subscribed, id: master.subscriptionId)
+        } else if let number = channel.resubscribeTextNumber {
+            addNotice("\(channel.label) is turned off. To turn it back on, text START to \(number).")
+        } else {
+            addNotice("\(channel.label) is turned off and can only be turned back on from your phone.")
+        }
+    }
+
+    if channel.master == nil || channel.topics.count > 1 || channel.topics.contains(where: { $0.isOptIn }) {
+        for topic in channel.topics {
+            addToggle(title: topic.name, isOn: topic.state == .subscribed, id: topic.subscriptionId, enabled: !channel.paused)
+        }
+    }
 }
-
-// Update a preference
-try await Postles.shared.unsubscribe(id: 123)
-try await Postles.shared.subscribe(id: 123)
-
-// Or set an explicit state
-try await Postles.shared.setSubscription(id: 123, state: .unsubscribed)
 ```
 
-#### Subscription Methods
-- `getSubscriptions() async throws -> Page<SubscriptionPreference>`: Returns a page of the user's subscription preferences
-- `setSubscription(id: Int, state: SubscriptionState) async throws`: Set a subscription to `.subscribed` or `.unsubscribed`
-- `subscribe(id: Int) async throws`: Subscribe the user to a subscription
-- `unsubscribe(id: Int) async throws`: Unsubscribe the user from a subscription
+Saving submits every channel master that is not locked, plus only the topics whose master was on when the screen rendered. A paused topic is left out entirely, otherwise it would read as unticked and opt the user out behind their back.
+
+```swift
+var updates: [TopicUpdate] = []
+
+for channel in channels {
+    if let master = channel.master, channel.canResubscribe {
+        updates.append(TopicUpdate(subscriptionId: master.subscriptionId, state: isOn(master.subscriptionId) ? .subscribed : .unsubscribed))
+    }
+    guard !channel.paused else { continue }
+    for topic in channel.topics {
+        updates.append(TopicUpdate(subscriptionId: topic.subscriptionId, state: isOn(topic.subscriptionId) ? .subscribed : .unsubscribed))
+    }
+}
+
+try await Postles.shared.setTopics(updates)
+```
+
+A single toggle can also be flipped on its own. Turning a channel master back on where consent must come from the handset throws `PostlesError.resubscribeLocked`, so branch on it and show the message the API returned:
+
+```swift
+do {
+    try await Postles.shared.subscribeTopic(id: 1)
+} catch PostlesError.resubscribeLocked(let message) {
+    addNotice(message)
+}
+```
+
+#### Topic Methods
+- `getTopicChannels() async throws -> [TopicChannel]`: Returns the user's topics grouped into one section per channel
+- `getTopics(cursor: String?) async throws -> Page<Topic>`: Returns a flat page of the user's topics, masters included
+- `setTopics(_ updates: [TopicUpdate]) async throws`: Saves up to 100 topics in one request
+- `setTopic(id: Int, state: TopicState) async throws`: Set a single topic to `.subscribed` or `.unsubscribed`
+- `subscribeTopic(id: Int) async throws`: Subscribe the user to a topic
+- `unsubscribeTopic(id: Int) async throws`: Unsubscribe the user from a topic
+
+A `Topic` carries a `kind` of `.channel` (the per-channel master switch) or `.topic`, and a `state` of `.subscribed`, `.unsubscribed` or `.notOptedIn`. `.notOptedIn` appears only on opt-in topics the user has never chosen and is never sent back on a save.
+
+#### Migrating from subscription names
+Subscriptions were renamed to topics. The old names still work and behave the same, but they are deprecated and will be removed in a future release.
+
+| Old name | New name |
+|---|---|
+| `getSubscriptions(cursor:)` | `getTopicChannels()` or `getTopics(cursor:)` |
+| `setSubscription(id:state:)` | `setTopic(id:state:)` |
+| `subscribe(id:)` | `subscribeTopic(id:)` |
+| `unsubscribe(id:)` | `unsubscribeTopic(id:)` |
+| `SubscriptionPreference` | `Topic` |
+| `SubscriptionState` | `TopicState` |
+
+`SubscriptionState` has no `.notOptedIn` case, so a topic the user has never opted in to reads as `.unsubscribed` through the old names. Move to `TopicState` to tell the two apart.
 
 #### Helper Methods
 - `getNofications() async throws -> Page<PostlesNotification>`: Returns a page of notifications
