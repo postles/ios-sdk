@@ -110,7 +110,7 @@ Read and modify a user's topic preferences directly through SDK methods. No UI i
 
 `getTopicChannels()` returns one section per channel, already grouped the way a preference center renders it: the channel's master switch, the topics nested under it, whether those topics are paused because the master is off, and whether the master can be turned back on from the app. `setTopics(_:)` then saves the whole screen in a single request.
 
-Render a section as follows. Show the nested topic toggles only when the channel has more than one topic or any opt-in topic, otherwise the channel toggle is the whole story. While the channel is `paused`, its topics are disabled and keep their last value. When `canResubscribe` is false, consent has to come from the handset, so show a notice with `resubscribeTextNumber` instead of a control.
+Render a section as follows. Show the nested topic toggles only when the channel has more than one topic or any opt-in topic, otherwise the channel toggle is the whole story; a channel with no master of its own always shows its topics, since there is no channel toggle to stand in for them. While the channel is `paused`, its topics are disabled and keep their last value. When `canResubscribe` is false, consent has to come from the handset, so show a notice instead of a control.
 
 ```swift
 let channels = try await Postles.shared.getTopicChannels()
@@ -119,12 +119,14 @@ for channel in channels {
     if let master = channel.master {
         if channel.canResubscribe {
             addToggle(title: channel.label, isOn: master.state == .subscribed, id: master.subscriptionId)
+        } else if let number = channel.resubscribeTextNumber {
+            addNotice("\(channel.label) is turned off. To turn it back on, text START to \(number).")
         } else {
-            addNotice("Text messages are turned off. To turn them back on, text START to \(channel.resubscribeTextNumber ?? "our number").")
+            addNotice("\(channel.label) is turned off and can only be turned back on from your phone.")
         }
     }
 
-    if channel.topics.count > 1 || channel.topics.contains(where: { $0.isOptIn }) {
+    if channel.master == nil || channel.topics.count > 1 || channel.topics.contains(where: { $0.isOptIn }) {
         for topic in channel.topics {
             addToggle(title: topic.name, isOn: topic.state == .subscribed, id: topic.subscriptionId, enabled: !channel.paused)
         }

@@ -267,7 +267,8 @@ public class Postles {
     ///
     /// - Parameters:
     ///     - id: The identifier of the topic to update
-    ///     - state: The desired state, either `.subscribed` or `.unsubscribed`
+    ///     - state: The desired state. The API only accepts `.subscribed` and
+    ///       `.unsubscribed`, so `.notOptedIn` is sent as `.unsubscribed`.
     ///
     public func setTopic(id: Int, state: TopicState) async throws {
         self.checkInit()
