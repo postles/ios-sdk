@@ -398,11 +398,6 @@ public class Postles {
         }
     }
 
-    /// Fetch and display in-app messages unless one was already fetched recently
-    ///
-    /// Used by the automatic foreground and push receipt triggers so that a burst of
-    /// activations or notifications results in at most one request every 30 seconds.
-    ///
     @MainActor
     func showLatestNotificationIfNeeded() async {
         if let lastInAppFetch, Date().timeIntervalSince(lastInAppFetch) < Self.inAppFetchThrottle {
