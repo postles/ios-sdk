@@ -390,7 +390,7 @@ public class Postles {
 
     @MainActor
     func showLatestNotificationIfNeeded() async {
-        if let lastInAppFetch, Date().timeIntervalSince(lastInAppFetch) < Self.inAppFetchThrottle {
+        if let lastInAppFetch, (0..<Self.inAppFetchThrottle).contains(Date().timeIntervalSince(lastInAppFetch)) {
             return
         }
         self.lastInAppFetch = Date()
@@ -485,7 +485,8 @@ public class Postles {
 
         /// Silent notifications exist only to trigger the in-app check, so they always fetch
         if let silentNotification = userInfo["aps"] as? [String: AnyObject],
-           silentNotification["content-available"] as? Int == 1 {
+           silentNotification["content-available"] as? Int == 1,
+           silentNotification["alert"] == nil {
             Task { @MainActor in
                 await self.showLatestNotification()
             }
