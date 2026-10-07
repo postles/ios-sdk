@@ -87,7 +87,7 @@ Postles.initialize(
 #### Automatic Fetching
 Your app does not need to fetch in-app messages itself. While `autoShow` is on, the SDK checks for waiting messages when the app is initialized, every time the app comes to the foreground, and whenever any Postles push notification is received. Checks are limited to one every 30 seconds, so a burst of activations or notifications only results in a single request.
 
-To turn the automatic foreground and push checks off and fetch on your own schedule, pass `fetchInAppOnForeground: false` when you initialize:
+To turn off the foreground and push checks, pass `fetchInAppOnForeground: false` when you initialize. The check when the SDK starts still follows `autoShow`, exactly as before this setting existed; turn `autoShow` off too if your app should only ever fetch on its own schedule (see below).
 ```swift
 Postles.initialize(
     apiKey: apiKey,

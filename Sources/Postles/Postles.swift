@@ -135,7 +135,7 @@ public class Postles {
         self.foregroundObservers.forEach { NotificationCenter.default.removeObserver($0) }
         self.foregroundObservers = []
 
-        guard config?.fetchInAppOnForeground == true, inAppDelegate?.autoShow == true else { return }
+        guard config?.fetchInAppOnForeground == true else { return }
 
         var names: [Notification.Name] = [UIApplication.didBecomeActiveNotification]
         if #available(iOS 13.0, *) {
@@ -144,8 +144,9 @@ public class Postles {
 
         self.foregroundObservers = names.map { name in
             NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                guard let self, self.inAppDelegate?.autoShow == true else { return }
                 Task { @MainActor in
-                    await self?.showLatestNotificationIfNeeded()
+                    await self.showLatestNotificationIfNeeded()
                 }
             }
         }
