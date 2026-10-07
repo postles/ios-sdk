@@ -84,16 +84,9 @@ public class Postles {
         apiKey: String,
         urlEndpoint: String,
         inAppDelegate: InAppDelegate? = nil,
-        fetchInAppOnForeground: Bool = true,
         launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Postles {
-        return Self.shared.initialize(
-            apiKey: apiKey,
-            urlEndpoint: urlEndpoint,
-            inAppDelegate: inAppDelegate,
-            fetchInAppOnForeground: fetchInAppOnForeground,
-            launchOptions: launchOptions
-        )
+        return Self.shared.initialize(apiKey: apiKey, urlEndpoint: urlEndpoint, inAppDelegate: inAppDelegate, launchOptions: launchOptions)
     }
 
     @discardableResult
@@ -101,14 +94,12 @@ public class Postles {
         apiKey: String,
         urlEndpoint: String,
         inAppDelegate: InAppDelegate? = nil,
-        fetchInAppOnForeground: Bool = true,
         launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Postles {
         return self.initialize(config: Config(
             apiKey: apiKey,
             urlEndpoint: urlEndpoint,
-            inAppDelegate: inAppDelegate,
-            fetchInAppOnForeground: fetchInAppOnForeground
+            inAppDelegate: inAppDelegate
         ), launchOptions: launchOptions)
     }
 
@@ -134,8 +125,6 @@ public class Postles {
     private func observeForeground() {
         self.foregroundObservers.forEach { NotificationCenter.default.removeObserver($0) }
         self.foregroundObservers = []
-
-        guard config?.fetchInAppOnForeground == true else { return }
 
         var names: [Notification.Name] = [UIApplication.didBecomeActiveNotification]
         if #available(iOS 13.0, *) {
@@ -503,7 +492,7 @@ public class Postles {
             return true
         }
 
-        if config?.fetchInAppOnForeground == true, inAppDelegate?.autoShow == true {
+        if inAppDelegate?.autoShow == true {
             Task { @MainActor in
                 await self.showLatestNotificationIfNeeded()
             }
