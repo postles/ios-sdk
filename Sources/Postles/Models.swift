@@ -37,7 +37,9 @@ struct Alias: Encodable {
 }
 
 public struct Geo: Encodable {
+    /// Two-letter ISO country code.
     public let country: String?
+    /// Region or state code within the country.
     public let region: String?
     public let city: String?
 
