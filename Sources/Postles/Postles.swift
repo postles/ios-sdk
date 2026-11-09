@@ -214,14 +214,17 @@ public class Postles {
     /// - Parameters:
     ///     - event: A string name of the event
     ///     - properties: A dictionary of attributes associated to the event
+    ///     - geo: Where the event happened. Leave as `nil` to use the location
+    ///       the request came from, or pass `.noLocation` to store none
     ///
-    public func track(event: String, properties: [String: Any]) {
+    public func track(event: String, properties: [String: Any], geo: EventLocation? = nil) {
         self.checkInit()
         let event = Event(
             name: event,
             anonymousId: self.anonymousId,
             externalId: self.externalId,
-            data: properties
+            data: properties,
+            geo: geo
         )
         self.postEvent(event)
     }
