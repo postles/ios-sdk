@@ -36,14 +36,34 @@ struct Alias: Encodable {
     let externalId: String?
 }
 
+public struct Geo: Encodable {
+    /// Two-letter ISO country code.
+    public let country: String?
+    /// Region or state code within the country.
+    public let region: String?
+    public let city: String?
+
+    public init(country: String? = nil, region: String? = nil, city: String? = nil) {
+        self.country = country
+        self.region = region
+        self.city = city
+    }
+}
+
+public enum EventLocation {
+    case location(Geo)
+    case noLocation
+}
+
 struct Event: Encodable {
     let name: String
     let anonymousId: String
     let externalId: String?
     let data: [String: Any]
+    let geo: EventLocation?
 
     enum CodingKeys: String, CodingKey {
-        case name, anonymousId, externalId, data
+        case name, anonymousId, externalId, data, geo
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -52,6 +72,11 @@ struct Event: Encodable {
         try container.encode(anonymousId, forKey: .anonymousId)
         try container.encodeIfPresent(externalId, forKey: .externalId)
         try container.encodeIfPresent(data, forKey: .data)
+        switch geo {
+        case .location(let location): try container.encode(location, forKey: .geo)
+        case .noLocation: try container.encodeNil(forKey: .geo)
+        case nil: break
+        }
     }
 }
 

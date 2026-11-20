@@ -47,6 +47,15 @@ Postles.shared.track(
 )
 ```
 
+With a public API key, each event is stored with the location the request came from. To set the location yourself, pass `geo: .location(...)`; to store no location, pass `geo: .noLocation`.
+```swift
+Postles.shared.track(
+    event: "Event Name",
+    properties: [:],
+    geo: .location(Geo(country: "US", region: "IL", city: "Chicago"))
+)
+```
+
 ### Notifications
 #### Register Device
 In order to send push notifications to a given device you need to register for notifications and then register the device with Postles. You can do so by using the `register(token: Data?)` method. If a user does not grant access to send notifications, you can also call this method without a token to register device characteristics.
